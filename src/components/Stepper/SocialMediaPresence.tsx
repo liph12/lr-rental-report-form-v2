@@ -7,21 +7,21 @@ import {
   Stack,
   TextField,
   IconButton,
-  Button,
   MenuItem,
+  CircularProgress,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { useAppContext } from "../../providers/AppProvider";
 import AppButton from "../utils/AppButton";
 import { AttachFile } from "@mui/icons-material";
+import useUploadFiles from "../hooks/useUploadFiles";
 
 const MONTHS = ["January", "February", "March"];
 
-interface SocialMediaPresence {
+type MonthlyUploading = {
   month: string;
-  date: string;
-  documents: string[];
-}
+  progress: boolean;
+};
 
 export default function SocialMediaPresence() {
   const { reportForm, setReportForm, isMobile } = useAppContext();
@@ -30,6 +30,9 @@ export default function SocialMediaPresence() {
 
   const [month, setMonth] = useState("January");
   const [date, setDate] = useState("");
+  const [monthlyUploadings, setMonthlyUploadings] = useState<
+    MonthlyUploading[]
+  >([]);
 
   // ─────────────────────────────────────────────
   // ADD ENTRY
@@ -48,6 +51,7 @@ export default function SocialMediaPresence() {
         },
       ],
     }));
+    setMonthlyUploadings((prev) => [...prev, { month, progress: false }]);
 
     setDate("");
   };
@@ -64,15 +68,35 @@ export default function SocialMediaPresence() {
     }));
   };
 
+  const makeUploadProgress = (
+    activityIndex: number,
+    progress: boolean = true,
+  ) => {
+    setMonthlyUploadings((prev) => {
+      const updated = [...prev];
+
+      updated[activityIndex] = {
+        ...updated[activityIndex],
+        progress: progress,
+      };
+
+      return updated;
+    });
+  };
+
   // ─────────────────────────────────────────────
   // UPLOAD DOCUMENTS
   // ─────────────────────────────────────────────
-  const uploadDocs = (
+  const uploadDocs = async (
     e: React.ChangeEvent<HTMLInputElement>,
     index: number,
   ) => {
+    makeUploadProgress(index);
+
     const files = Array.from(e.target.files || []);
-    const urls = files.map((f) => URL.createObjectURL(f));
+    const urls = await useUploadFiles(files);
+
+    makeUploadProgress(index, false);
 
     setReportForm((prev) => {
       const updated = [...prev.social_media_presence];
@@ -273,6 +297,16 @@ export default function SocialMediaPresence() {
                           </Box>
                         ))}
                       </Stack>
+                      {monthlyUploadings[entryIndex].progress && (
+                        <Box
+                          sx={{ display: "flex", gap: 2, alignItems: "center" }}
+                        >
+                          <CircularProgress size={20} />
+                          <Typography variant="body2" color="warning">
+                            Uploading documents...
+                          </Typography>
+                        </Box>
+                      )}
                     </Paper>
                   );
                 })}

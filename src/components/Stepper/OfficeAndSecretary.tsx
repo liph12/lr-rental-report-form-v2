@@ -7,6 +7,7 @@ import {
   Stack,
   TextField,
   IconButton,
+  CircularProgress,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { useAppContext } from "../../providers/AppProvider";
@@ -14,9 +15,9 @@ import AppButton from "../utils/AppButton";
 import { AttachFile } from "@mui/icons-material";
 import useUploadFiles from "../hooks/useUploadFiles";
 
-type Files = {
-  office_photos: File[];
-  secretarial_documents: File[];
+type Uploading = {
+  office_progress_upload: boolean;
+  secretarial_documents_progress_upload: boolean;
 };
 
 export default function OfficeAndSecretary() {
@@ -24,11 +25,10 @@ export default function OfficeAndSecretary() {
 
   const [secName, setSecName] = useState("");
   const [secEmail, setSecEmail] = useState("");
-  const [files, setFiles] = useState<Files>({
-    office_photos: [],
-    secretarial_documents: [],
+  const [uploading, setUploading] = useState<Uploading>({
+    office_progress_upload: false,
+    secretarial_documents_progress_upload: false,
   });
-  const [progress, setProgress] = useState(false);
 
   const data = reportForm.office_secretary;
 
@@ -85,14 +85,14 @@ export default function OfficeAndSecretary() {
   // OFFICE PHOTOS UPLOAD
   // ─────────────────────────────────────────────
 
-  const handleOfficePhotos = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    const urls = files.map((file) => URL.createObjectURL(file));
+  const handleOfficePhotos = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUploading((prev) => ({ ...prev, office_progress_upload: true }));
 
-    setFiles((prev) => ({
-      ...prev,
-      office_photos: [...prev.office_photos, ...files],
-    }));
+    const files = Array.from(e.target.files || []);
+    const urls = await useUploadFiles(files);
+
+    setUploading((prev) => ({ ...prev, office_progress_upload: false }));
+
     setReportForm((prev) => ({
       ...prev,
       office_secretary: {
@@ -106,10 +106,6 @@ export default function OfficeAndSecretary() {
   // REMOVE OFFICE PHOTO
   // ─────────────────────────────────────────────
   const removeOfficePhoto = (index: number) => {
-    setFiles((prev) => ({
-      ...prev,
-      office_photos: prev.office_photos.filter((_, i) => i !== index),
-    }));
     setReportForm((prev) => ({
       ...prev,
       office_secretary: {
@@ -124,13 +120,18 @@ export default function OfficeAndSecretary() {
   // ─────────────────────────────────────────────
   // DOCUMENTS UPLOAD
   // ─────────────────────────────────────────────
-  const handleDocuments = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    const urls = files.map((file) => URL.createObjectURL(file));
-
-    setFiles((prev) => ({
+  const handleDocuments = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUploading((prev) => ({
       ...prev,
-      secretarial_documents: [...prev.secretarial_documents, ...files],
+      secretarial_documents_progress_upload: true,
+    }));
+
+    const files = Array.from(e.target.files || []);
+    const urls = await useUploadFiles(files);
+
+    setUploading((prev) => ({
+      ...prev,
+      secretarial_documents_progress_upload: false,
     }));
 
     setReportForm((prev) => ({
@@ -149,12 +150,6 @@ export default function OfficeAndSecretary() {
   // REMOVE DOCUMENT
   // ─────────────────────────────────────────────
   const removeDocument = (index: number) => {
-    setFiles((prev) => ({
-      ...prev,
-      secretarial_documents: prev.secretarial_documents.filter(
-        (_, i) => i !== index,
-      ),
-    }));
     setReportForm((prev) => ({
       ...prev,
       office_secretary: {
@@ -165,15 +160,6 @@ export default function OfficeAndSecretary() {
           ),
       },
     }));
-  };
-
-  const handleSaveOfficePhotosAsync = async () => {
-    setProgress(true);
-    const uploadedFiles = await useUploadFiles(files.office_photos);
-
-    console.log(uploadedFiles);
-
-    setProgress(false);
   };
 
   return (
@@ -261,6 +247,14 @@ export default function OfficeAndSecretary() {
               </Box>
             ))}
           </Stack>
+          {uploading.office_progress_upload && (
+            <Box sx={{ display: "flex", gap: 2, alignItems: "center", mt: 1 }}>
+              <CircularProgress size={20} />
+              <Typography variant="body2" color="warning">
+                Uploading photos...
+              </Typography>
+            </Box>
+          )}
         </Box>
 
         {/* DOCUMENTS */}
@@ -315,17 +309,16 @@ export default function OfficeAndSecretary() {
               </Box>
             ))}
           </Stack>
+          {uploading.secretarial_documents_progress_upload && (
+            <Box sx={{ display: "flex", gap: 2, alignItems: "center", mt: 1 }}>
+              <CircularProgress size={20} />
+              <Typography variant="body2" color="warning">
+                Uploading documents...
+              </Typography>
+            </Box>
+          )}
         </Box>
       </Stack>
-      <Box sx={{ mt: 2 }}>
-        <AppButton
-          onClick={handleSaveOfficePhotosAsync}
-          variant="contained"
-          loading={progress}
-        >
-          Save Files
-        </AppButton>
-      </Box>
 
       {/* SECRETARY LIST */}
       <Box sx={{ mt: 3 }}>

@@ -8,21 +8,20 @@ import {
   TextField,
   IconButton,
   MenuItem,
+  CircularProgress,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { useAppContext } from "../../providers/AppProvider";
 import AppButton from "../utils/AppButton";
 import { AttachFile } from "@mui/icons-material";
+import useUploadFiles from "../hooks/useUploadFiles";
 
 const MONTHS = ["January", "February", "March"];
 
-interface ParticipatedActivity {
+type MonthlyUploading = {
   month: string;
-  date: string;
-  title: string;
-  description: string;
-  documents: string[];
-}
+  progress: boolean;
+};
 
 export default function ParticipatedActivity() {
   const { reportForm, setReportForm, isMobile } = useAppContext();
@@ -33,6 +32,9 @@ export default function ParticipatedActivity() {
   const [date, setDate] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [monthlyUploadings, setMonthlyUploadings] = useState<
+    MonthlyUploading[]
+  >([]);
 
   // ─────────────────────────────────────────────
   // ADD ACTIVITY
@@ -53,6 +55,7 @@ export default function ParticipatedActivity() {
         },
       ],
     }));
+    setMonthlyUploadings((prev) => [...prev, { month, progress: false }]);
 
     setTitle("");
     setDescription("");
@@ -74,12 +77,33 @@ export default function ParticipatedActivity() {
   // ─────────────────────────────────────────────
   // ADD DOCUMENTS
   // ─────────────────────────────────────────────
-  const uploadDocs = (
+
+  const makeUploadProgress = (
+    activityIndex: number,
+    progress: boolean = true,
+  ) => {
+    setMonthlyUploadings((prev) => {
+      const updated = [...prev];
+
+      updated[activityIndex] = {
+        ...updated[activityIndex],
+        progress: progress,
+      };
+
+      return updated;
+    });
+  };
+
+  const uploadDocs = async (
     e: React.ChangeEvent<HTMLInputElement>,
     activityIndex: number,
   ) => {
+    makeUploadProgress(activityIndex);
+
     const files = Array.from(e.target.files || []);
-    const urls = files.map((file) => URL.createObjectURL(file));
+    const urls = await useUploadFiles(files);
+
+    makeUploadProgress(activityIndex, false);
 
     setReportForm((prev) => {
       const updated = [...prev.participated_activities];
@@ -303,6 +327,16 @@ export default function ParticipatedActivity() {
                           </Box>
                         ))}
                       </Stack>
+                      {monthlyUploadings[activityIndex].progress && (
+                        <Box
+                          sx={{ display: "flex", gap: 2, alignItems: "center" }}
+                        >
+                          <CircularProgress size={20} />
+                          <Typography variant="body2" color="warning">
+                            Uploading documents...
+                          </Typography>
+                        </Box>
+                      )}
                     </Paper>
                   );
                 })}

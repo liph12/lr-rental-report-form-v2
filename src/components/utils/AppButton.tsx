@@ -7,24 +7,10 @@ const StyledButton = styled(Button)({
   fontWeight: 500,
 });
 
-type AppButtonProps = ButtonProps & {
-  loading?: boolean;
-};
-
-export default function AppButton({
-  children,
-  loading = false,
-  disabled,
-  ...props
-}: AppButtonProps) {
+export default function AppButton({ children, ...props }: ButtonProps) {
   return (
-    <StyledButton
-      disabled={loading || disabled}
-      {...props}
-      disableElevation
-      size="small"
-    >
-      {loading ? "loading..." : children}
+    <StyledButton {...props} disableElevation size="small">
+      {children}
     </StyledButton>
   );
 }
