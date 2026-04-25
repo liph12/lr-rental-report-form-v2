@@ -1,5 +1,6 @@
-import { Box, Typography, Chip, Divider, Button } from "@mui/material";
-import { WarningAmberOutlined } from "@mui/icons-material";
+import { useState } from "react";
+import { Box, Typography, Chip, Divider, Button, Alert } from "@mui/material";
+import { FavoriteRounded, WarningAmberOutlined } from "@mui/icons-material";
 import AppLayout from "./AppLayout";
 import BasicInfo from "./Stepper/BasicInfo";
 import ActiveRentManagers from "./Stepper/ActiveRentManagers";
@@ -7,9 +8,19 @@ import OfficeAndSecretary from "./Stepper/OfficeAndSecretary";
 import ParticipatedActivity from "./Stepper/ParticipatedActivity";
 import SocialMediaPresence from "./Stepper/SocialMediaPresence";
 import RentPhAccount from "./Stepper/RentPhAccount";
-import AppButton from "./utils/AppButton";
+import axios from "axios";
+
+const MONTHS = ["January", "February", "March"];
 
 export default function ReportForm() {
+  const [errors, setErrors] = useState<string[]>([]);
+
+  const addError = (m: string) => setErrors((prev) => [...prev, m]);
+
+  const handleSubmitForm = async () => {
+    setErrors([]);
+  };
+
   return (
     <AppLayout>
       <Box
@@ -51,11 +62,27 @@ export default function ReportForm() {
           <SocialMediaPresence />
           <RentPhAccount />
         </Box>
+        <Box sx={{ padding: 2, textAlign: "center" }}>
+          <Typography>
+            Thank you for completing this form. <br /> Your active response and
+            participation is grealty appreciated!
+          </Typography>
+          <FavoriteRounded color="primary" />
+          <FavoriteRounded color="warning" />
+        </Box>
+        <Box sx={{ mt: 1, mb: 2 }}>
+          {errors.map((err, i) => (
+            <Alert key={i} severity="error">
+              {err}
+            </Alert>
+          ))}
+        </Box>
         <Button
           fullWidth
           disableElevation
           variant="contained"
           sx={{ borderRadius: 20, textTransform: "none" }}
+          onClick={handleSubmitForm}
         >
           Submit Report
         </Button>
