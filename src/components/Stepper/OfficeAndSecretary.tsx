@@ -12,17 +12,28 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import { useAppContext } from "../../providers/AppProvider";
 import AppButton from "../utils/AppButton";
 import { AttachFile } from "@mui/icons-material";
+import useUploadFiles from "../hooks/useUploadFiles";
+
+type Files = {
+  office_photos: File[];
+  secretarial_documents: File[];
+};
 
 export default function OfficeAndSecretary() {
   const { isMobile, reportForm, setReportForm } = useAppContext();
 
   const [secName, setSecName] = useState("");
   const [secEmail, setSecEmail] = useState("");
+  const [files, setFiles] = useState<Files>({
+    office_photos: [],
+    secretarial_documents: [],
+  });
+  const [progress, setProgress] = useState(false);
 
   const data = reportForm.office_secretary;
 
   // ─────────────────────────────────────────────
-  // AUTO UPDATE ADDRESS
+  // ADDRESS (AUTO SAVE)
   // ─────────────────────────────────────────────
   const handleAddressChange = (value: string) => {
     setReportForm((prev) => ({
@@ -55,6 +66,9 @@ export default function OfficeAndSecretary() {
     setSecEmail("");
   };
 
+  // ─────────────────────────────────────────────
+  // REMOVE SECRETARY
+  // ─────────────────────────────────────────────
   const removeSecretary = (index: number) => {
     setReportForm((prev) => ({
       ...prev,
@@ -68,12 +82,17 @@ export default function OfficeAndSecretary() {
   };
 
   // ─────────────────────────────────────────────
-  // IMAGE UPLOAD HELPERS
+  // OFFICE PHOTOS UPLOAD
   // ─────────────────────────────────────────────
+
   const handleOfficePhotos = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const urls = files.map((file) => URL.createObjectURL(file));
 
+    setFiles((prev) => ({
+      ...prev,
+      office_photos: [...prev.office_photos, ...files],
+    }));
     setReportForm((prev) => ({
       ...prev,
       office_secretary: {
@@ -83,9 +102,36 @@ export default function OfficeAndSecretary() {
     }));
   };
 
+  // ─────────────────────────────────────────────
+  // REMOVE OFFICE PHOTO
+  // ─────────────────────────────────────────────
+  const removeOfficePhoto = (index: number) => {
+    setFiles((prev) => ({
+      ...prev,
+      office_photos: prev.office_photos.filter((_, i) => i !== index),
+    }));
+    setReportForm((prev) => ({
+      ...prev,
+      office_secretary: {
+        ...prev.office_secretary,
+        office_photos: prev.office_secretary.office_photos.filter(
+          (_, i) => i !== index,
+        ),
+      },
+    }));
+  };
+
+  // ─────────────────────────────────────────────
+  // DOCUMENTS UPLOAD
+  // ─────────────────────────────────────────────
   const handleDocuments = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const urls = files.map((file) => URL.createObjectURL(file));
+
+    setFiles((prev) => ({
+      ...prev,
+      secretarial_documents: [...prev.secretarial_documents, ...files],
+    }));
 
     setReportForm((prev) => ({
       ...prev,
@@ -97,6 +143,37 @@ export default function OfficeAndSecretary() {
         ],
       },
     }));
+  };
+
+  // ─────────────────────────────────────────────
+  // REMOVE DOCUMENT
+  // ─────────────────────────────────────────────
+  const removeDocument = (index: number) => {
+    setFiles((prev) => ({
+      ...prev,
+      secretarial_documents: prev.secretarial_documents.filter(
+        (_, i) => i !== index,
+      ),
+    }));
+    setReportForm((prev) => ({
+      ...prev,
+      office_secretary: {
+        ...prev.office_secretary,
+        secretarial_documents:
+          prev.office_secretary.secretarial_documents.filter(
+            (_, i) => i !== index,
+          ),
+      },
+    }));
+  };
+
+  const handleSaveOfficePhotosAsync = async () => {
+    setProgress(true);
+    const uploadedFiles = await useUploadFiles(files.office_photos);
+
+    console.log(uploadedFiles);
+
+    setProgress(false);
   };
 
   return (
@@ -121,7 +198,7 @@ export default function OfficeAndSecretary() {
         Upload office photos, documents, and manage secretaries.
       </Typography>
 
-      {/* ADDRESS (AUTO SAVE) */}
+      {/* ADDRESS */}
       <Box sx={{ mt: 2 }}>
         <TextField
           label="Office Address"
@@ -155,18 +232,33 @@ export default function OfficeAndSecretary() {
 
           <Stack direction="row" spacing={1} sx={{ mt: 2, flexWrap: "wrap" }}>
             {data.office_photos.map((img, i) => (
-              <Box
-                key={i}
-                component="img"
-                src={img}
-                sx={{
-                  width: 80,
-                  height: 80,
-                  borderRadius: 2,
-                  objectFit: "cover",
-                  border: "1px solid #ddd",
-                }}
-              />
+              <Box key={i} sx={{ position: "relative" }}>
+                <Box
+                  component="img"
+                  src={img}
+                  sx={{
+                    width: 80,
+                    height: 80,
+                    borderRadius: 2,
+                    objectFit: "cover",
+                    border: "1px solid #ddd",
+                  }}
+                />
+
+                <IconButton
+                  size="small"
+                  color="error"
+                  onClick={() => removeOfficePhoto(i)}
+                  sx={{
+                    position: "absolute",
+                    top: -8,
+                    right: -8,
+                    border: "1px solid #ddd",
+                  }}
+                >
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              </Box>
             ))}
           </Stack>
         </Box>
@@ -194,22 +286,46 @@ export default function OfficeAndSecretary() {
 
           <Stack direction="row" spacing={1} sx={{ mt: 2, flexWrap: "wrap" }}>
             {data.secretarial_documents.map((doc, i) => (
-              <Box
-                key={i}
-                component="img"
-                src={doc}
-                sx={{
-                  width: 80,
-                  height: 80,
-                  borderRadius: 2,
-                  objectFit: "cover",
-                  border: "1px solid #ddd",
-                }}
-              />
+              <Box key={i} sx={{ position: "relative" }}>
+                <Box
+                  component="img"
+                  src={doc}
+                  sx={{
+                    width: 80,
+                    height: 80,
+                    borderRadius: 2,
+                    objectFit: "cover",
+                    border: "1px solid #ddd",
+                  }}
+                />
+
+                <IconButton
+                  size="small"
+                  color="error"
+                  onClick={() => removeDocument(i)}
+                  sx={{
+                    position: "absolute",
+                    top: -8,
+                    right: -8,
+                    border: "1px solid #ddd",
+                  }}
+                >
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              </Box>
             ))}
           </Stack>
         </Box>
       </Stack>
+      <Box sx={{ mt: 2 }}>
+        <AppButton
+          onClick={handleSaveOfficePhotosAsync}
+          variant="contained"
+          loading={progress}
+        >
+          Save Files
+        </AppButton>
+      </Box>
 
       {/* SECRETARY LIST */}
       <Box sx={{ mt: 3 }}>
@@ -243,25 +359,29 @@ export default function OfficeAndSecretary() {
 
         <Stack spacing={1.5} sx={{ mt: 2 }}>
           {data.secretaries.map((sec, index) => (
-            <Box
+            <Paper
               key={index}
-              sx={{
-                p: 1.5,
-                border: "1px solid #eee",
-                borderRadius: 2,
-                display: "flex",
-                justifyContent: "space-between",
-              }}
+              variant="outlined"
+              sx={{ p: 2, borderRadius: 2 }}
             >
-              <Box>
-                <Typography fontWeight={600}>{sec.name}</Typography>
-                <Typography variant="caption">{sec.email}</Typography>
-              </Box>
-
-              <IconButton color="error" onClick={() => removeSecretary(index)}>
-                <DeleteIcon fontSize="small" />
-              </IconButton>
-            </Box>
+              <Stack
+                direction="row"
+                justifyContent="space-between"
+                alignItems="center"
+              >
+                <Box>
+                  <Typography fontWeight={600}>{sec.name}</Typography>
+                  <Typography variant="caption">{sec.email}</Typography>
+                </Box>
+                <IconButton
+                  size="small"
+                  color="error"
+                  onClick={() => removeSecretary(index)}
+                >
+                  <DeleteIcon fontSize="small" />
+                </IconButton>
+              </Stack>
+            </Paper>
           ))}
         </Stack>
       </Box>

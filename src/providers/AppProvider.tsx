@@ -34,9 +34,26 @@ interface officeSecretary {
   secretaries: Secretary[];
 }
 
+interface ParticipatedActivity {
+  month: string;
+  date: string;
+  title: string;
+  description: string;
+  documents: string[];
+}
+
+interface SocialMediaPresence {
+  month: string;
+  date: string;
+  documents: string[];
+}
+
 interface ReportForm {
   rent_managers: RentManager[];
   office_secretary: officeSecretary;
+  participated_activities: ParticipatedActivity[];
+  social_media_presence: SocialMediaPresence[];
+  rent_ph_account: string;
 }
 
 type AppContextType = {
@@ -56,6 +73,9 @@ const defaultReportForm: ReportForm = {
     address: "",
     secretaries: [],
   },
+  participated_activities: [],
+  social_media_presence: [],
+  rent_ph_account: "",
 };
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
