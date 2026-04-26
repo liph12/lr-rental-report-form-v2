@@ -225,7 +225,11 @@ export default function SocialMediaPresence({ errors }: { errors: string[] }) {
                       sx={{ p: 2, borderRadius: 2 }}
                     >
                       {/* HEADER */}
-                      <Stack direction="row" justifyContent="space-between">
+                      <Stack
+                        direction="row"
+                        justifyContent="space-between"
+                        alignItems="center"
+                      >
                         <Box>
                           <Typography fontWeight={600}>
                             Social Media Activity
