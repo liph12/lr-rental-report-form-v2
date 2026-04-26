@@ -1,8 +1,10 @@
 import { Box, Typography, Stack, Paper, Chip, TextField } from "@mui/material";
 import { useAppContext } from "../../providers/AppProvider";
 
-export default function RentPhAccount() {
+export default function RentPhAccount({ errors }: { errors: string[] }) {
   const { reportForm, setReportForm, isMobile } = useAppContext();
+
+  const hasErrors = errors.length > 0;
 
   return (
     <Paper
@@ -10,7 +12,7 @@ export default function RentPhAccount() {
         p: { xs: 2, sm: 3 },
         borderRadius: 3,
         mt: 2,
-        border: "1px solid #ccc",
+        border: hasErrors ? "1px solid #eb7373" : "1px solid #ccc",
       }}
       elevation={0}
     >
@@ -40,6 +42,15 @@ export default function RentPhAccount() {
           fullWidth
         />
       </Box>
+      {hasErrors && (
+        <Box sx={{ mt: 1 }}>
+          {errors.map((err, k) => (
+            <Typography key={k} variant="body2" color="error" sx={{ mb: 0.5 }}>
+              {err}
+            </Typography>
+          ))}
+        </Box>
+      )}
     </Paper>
   );
 }

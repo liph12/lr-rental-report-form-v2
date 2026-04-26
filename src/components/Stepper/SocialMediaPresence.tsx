@@ -23,7 +23,7 @@ type MonthlyUploading = {
   progress: boolean;
 };
 
-export default function SocialMediaPresence() {
+export default function SocialMediaPresence({ errors }: { errors: string[] }) {
   const { reportForm, setReportForm, isMobile } = useAppContext();
 
   const data = reportForm.social_media_presence;
@@ -134,13 +134,15 @@ export default function SocialMediaPresence() {
     });
   };
 
+  const hasErrors = errors.length > 0;
+
   return (
     <Paper
       sx={{
         p: { xs: 2, sm: 3 },
         borderRadius: 3,
         mt: 2,
-        border: "1px solid #ccc",
+        border: hasErrors ? "1px solid #eb7373" : "1px solid #ccc",
       }}
       elevation={0}
     >
@@ -315,6 +317,15 @@ export default function SocialMediaPresence() {
           );
         })}
       </Stack>
+      {hasErrors && (
+        <Box sx={{ mt: 1 }}>
+          {errors.map((err, k) => (
+            <Typography key={k} variant="body2" color="error" sx={{ mb: 0.5 }}>
+              {err}
+            </Typography>
+          ))}
+        </Box>
+      )}
     </Paper>
   );
 }

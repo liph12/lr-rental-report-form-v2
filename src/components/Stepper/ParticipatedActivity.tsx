@@ -23,7 +23,7 @@ type MonthlyUploading = {
   progress: boolean;
 };
 
-export default function ParticipatedActivity() {
+export default function ParticipatedActivity({ errors }: { errors: string[] }) {
   const { reportForm, setReportForm, isMobile } = useAppContext();
 
   const data = reportForm.participated_activities;
@@ -141,13 +141,15 @@ export default function ParticipatedActivity() {
     });
   };
 
+  const hasErrors = errors.length > 0;
+
   return (
     <Paper
       sx={{
         p: { xs: 2, sm: 3 },
         borderRadius: 3,
         mt: 2,
-        border: "1px solid #e0e0e0",
+        border: hasErrors ? "1px solid #eb7373" : "1px solid #ccc",
       }}
       elevation={0}
     >
@@ -345,6 +347,15 @@ export default function ParticipatedActivity() {
           );
         })}
       </Stack>
+      {hasErrors && (
+        <Box sx={{ mt: 1 }}>
+          {errors.map((err, k) => (
+            <Typography key={k} variant="body2" color="error" sx={{ mb: 0.5 }}>
+              {err}
+            </Typography>
+          ))}
+        </Box>
+      )}
     </Paper>
   );
 }

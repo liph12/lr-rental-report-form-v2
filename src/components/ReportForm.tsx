@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Box, Typography, Chip, Divider, Button, Alert } from "@mui/material";
 import { FavoriteRounded, WarningAmberOutlined } from "@mui/icons-material";
+import { useAppContext } from "../providers/AppProvider";
 import AppLayout from "./AppLayout";
 import BasicInfo from "./Stepper/BasicInfo";
 import ActiveRentManagers from "./Stepper/ActiveRentManagers";
@@ -8,17 +9,47 @@ import OfficeAndSecretary from "./Stepper/OfficeAndSecretary";
 import ParticipatedActivity from "./Stepper/ParticipatedActivity";
 import SocialMediaPresence from "./Stepper/SocialMediaPresence";
 import RentPhAccount from "./Stepper/RentPhAccount";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 
 const MONTHS = ["January", "February", "March"];
 
-export default function ReportForm() {
-  const [errors, setErrors] = useState<string[]>([]);
+type Errors = {
+  label: string;
+  errors: string[];
+};
 
-  const addError = (m: string) => setErrors((prev) => [...prev, m]);
+export default function ReportForm() {
+  const authToken = localStorage.getItem("authToken");
+  const { reportForm, userData } = useAppContext();
+  const [errors, setErrors] = useState<Errors[]>([]);
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmitForm = async () => {
-    setErrors([]);
+    try {
+      setSubmitting(true);
+      const payLoad = { ...reportForm, member_id: userData?.id };
+      const response = await axios.post(
+        "https://api.leuteriorealty.com/lr/v2/public/api/store-rental-report",
+        payLoad,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+        },
+      );
+    } catch (e) {
+      const err = e as AxiosError;
+      if (err.status === 403) {
+        if (err.response) {
+          const errors = err.response.data as Errors[];
+
+          setErrors(errors);
+        }
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -56,33 +87,42 @@ export default function ReportForm() {
         <Divider sx={{ my: 2 }} />
         <Box sx={{ my: 2 }}>
           <BasicInfo />
-          <ActiveRentManagers />
-          <OfficeAndSecretary />
-          <ParticipatedActivity />
-          <SocialMediaPresence />
-          <RentPhAccount />
+          <ActiveRentManagers
+            errors={errors.find((e) => e.label === "01")?.errors ?? []}
+          />
+          <OfficeAndSecretary
+            errors={errors.find((e) => e.label === "02")?.errors ?? []}
+          />
+          <ParticipatedActivity
+            errors={errors.find((e) => e.label === "03")?.errors ?? []}
+          />
+          <SocialMediaPresence
+            errors={errors.find((e) => e.label === "04")?.errors ?? []}
+          />
+          <RentPhAccount
+            errors={errors.find((e) => e.label === "05")?.errors ?? []}
+          />
         </Box>
-        <Box sx={{ padding: 2, textAlign: "center" }}>
+        {/* <Box sx={{ padding: 2, textAlign: "center" }}>
           <Typography>
             Thank you for completing this form. <br /> Your active response and
             participation is grealty appreciated!
           </Typography>
           <FavoriteRounded color="primary" />
           <FavoriteRounded color="warning" />
-        </Box>
-        <Box sx={{ mt: 1, mb: 2 }}>
-          {errors.map((err, i) => (
-            <Alert key={i} severity="error">
-              {err}
-            </Alert>
-          ))}
-        </Box>
+        </Box> */}
+        {errors.length > 0 && (
+          <Alert severity="error" sx={{ my: 2 }}>
+            Form has required fields, please review them and resubmit.
+          </Alert>
+        )}
         <Button
           fullWidth
           disableElevation
           variant="contained"
           sx={{ borderRadius: 20, textTransform: "none" }}
           onClick={handleSubmitForm}
+          loading={submitting}
         >
           Submit Report
         </Button>

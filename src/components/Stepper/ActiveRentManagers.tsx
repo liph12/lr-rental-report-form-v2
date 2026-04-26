@@ -17,7 +17,7 @@ import AppButton from "../utils/AppButton";
 
 type RMLabelType = "Rent Manager" | "Rent Manager PRO";
 
-export default function ActiveRentManagers() {
+export default function ActiveRentManagers({ errors }: { errors: string[] }) {
   const { reportForm, setReportForm, isMobile } = useAppContext();
 
   const [selectedType, setSelectedType] = useState<RMLabelType>("Rent Manager");
@@ -64,13 +64,15 @@ export default function ActiveRentManagers() {
       ? rentManagerProCount < 1
       : rentManagerCount < 5;
 
+  const hasErrors = errors.length > 0;
+
   return (
     <Paper
       sx={{
         p: { xs: 2, sm: 3 },
         borderRadius: 3,
         mt: 2,
-        border: "1px solid #ccc",
+        border: hasErrors ? "1px solid #eb7373" : "1px solid #ccc",
       }}
       elevation={0}
     >
@@ -191,6 +193,15 @@ export default function ActiveRentManagers() {
           </Paper>
         ))}
       </Stack>
+      {hasErrors && (
+        <Box sx={{ mt: 1 }}>
+          {errors.map((err, k) => (
+            <Typography key={k} variant="body2" color="error" sx={{ mb: 0.5 }}>
+              {err}
+            </Typography>
+          ))}
+        </Box>
+      )}
     </Paper>
   );
 }
