@@ -14,6 +14,7 @@ interface UserData {
   name: string;
   email: string;
   team: string;
+  team_id: number;
 }
 
 interface RentManager {
@@ -34,7 +35,7 @@ interface officeSecretary {
   secretaries: Secretary[];
 }
 
-interface ParticipatedActivity {
+export interface ParticipatedActivity {
   month: string;
   date: string;
   title: string;
@@ -42,7 +43,7 @@ interface ParticipatedActivity {
   documents: string[];
 }
 
-interface SocialMediaPresence {
+export interface SocialMediaPresence {
   month: string;
   date: string;
   documents: string[];
@@ -102,6 +103,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
           name: data.name,
           email: data.email,
           team: data.team.teamname,
+          team_id: data.team.id,
         };
 
         setUserData(_userData);

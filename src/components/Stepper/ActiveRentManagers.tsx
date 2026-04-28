@@ -1,9 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Box,
   Chip,
   Typography,
-  TextField,
   Paper,
   Stack,
   ToggleButton,
@@ -13,34 +12,30 @@ import {
 
 import DeleteIcon from "@mui/icons-material/Delete";
 import { useAppContext } from "../../providers/AppProvider";
-import AppButton from "../utils/AppButton";
+import axios from "axios";
+
+interface RentManager {
+  id: number;
+  name: string;
+  email: string;
+  totalRemittance: number;
+}
+
+export interface DateCutOff {
+  id: number;
+  month_year: string;
+  date: string;
+}
 
 type RMLabelType = "Rent Manager" | "Rent Manager PRO";
 
 export default function ActiveRentManagers({ errors }: { errors: string[] }) {
-  const { reportForm, setReportForm, isMobile } = useAppContext();
+  const { reportForm, setReportForm, isMobile, userData } = useAppContext();
 
   const [selectedType, setSelectedType] = useState<RMLabelType>("Rent Manager");
-  const [name, setName] = useState("");
-  const [certifiedAt, setCertifiedAt] = useState("");
+  const [rentManagers, setRentManagers] = useState<RentManager[]>([]);
+  const [cutOffDates, setCutOffDates] = useState<DateCutOff[]>([]);
 
-  // ── Add ─────────────────────────────
-  const addRentManager = () => {
-    if (!name || !certifiedAt) return;
-
-    setReportForm((prev) => ({
-      ...prev,
-      rent_managers: [
-        ...prev.rent_managers,
-        { name, certifiedAt, type: selectedType },
-      ],
-    }));
-
-    setName("");
-    setCertifiedAt("");
-  };
-
-  // ── Remove ─────────────────────────────
   const removeRentManager = (index: number) => {
     setReportForm((prev) => ({
       ...prev,
@@ -48,7 +43,6 @@ export default function ActiveRentManagers({ errors }: { errors: string[] }) {
     }));
   };
 
-  // ── Counts ─────────────────────────────
   const rentManagerCount = reportForm.rent_managers.filter(
     (rm) => rm.type === "Rent Manager",
   ).length;
@@ -59,12 +53,56 @@ export default function ActiveRentManagers({ errors }: { errors: string[] }) {
 
   const isRequirementMet = rentManagerProCount >= 1 || rentManagerCount >= 5;
 
-  const canAdd =
-    selectedType === "Rent Manager PRO"
-      ? rentManagerProCount < 1
-      : rentManagerCount < 5;
-
   const hasErrors = errors.length > 0;
+
+  useEffect(() => {
+    const fetchCutOffDates = async () => {
+      try {
+        const authToken = localStorage.getItem("authToken");
+        const response = await axios.get(
+          `https://leuteriorealty.com/api/rental/sales-cutoff-dates`,
+          {
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+            },
+          },
+        );
+
+        return response.data;
+      } catch (e) {
+        return null;
+      }
+    };
+
+    const fetchRentManagersAsync = async () => {
+      try {
+        const authToken = localStorage.getItem("authToken");
+        const response = await axios.get(
+          `https://leuteriorealty.com/api/rental/team-rent-managers/${userData?.team_id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+            },
+          },
+        );
+        const cutOffDates: DateCutOff[] = await fetchCutOffDates();
+
+        if (cutOffDates) {
+          const data = response.data.data;
+
+          console.log(data);
+        }
+      } catch (e) {
+        // to do
+      } finally {
+        // to do
+      }
+    };
+
+    if (userData) {
+      fetchRentManagersAsync();
+    }
+  }, [userData]);
 
   return (
     <Paper
@@ -85,7 +123,8 @@ export default function ActiveRentManagers({ errors }: { errors: string[] }) {
       </Stack>
 
       <Typography sx={{ mt: 1, fontSize: { xs: 13, sm: 14 } }}>
-        Minimum of 5 Rent Managers OR 1 Rent Manager PRO per quarter.
+        Minimum of 5 Rent Managers OR 1 Rent Manager PRO as of{" "}
+        <b>(January - March 2026).</b>
       </Typography>
 
       {/* Toggle */}
@@ -106,39 +145,6 @@ export default function ActiveRentManagers({ errors }: { errors: string[] }) {
           RM PRO
         </ToggleButton>
       </ToggleButtonGroup>
-
-      {/* Inputs */}
-      <Stack direction={isMobile ? "column" : "row"} spacing={2} sx={{ mt: 2 }}>
-        <TextField
-          label="Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          size="small"
-          fullWidth
-        />
-
-        <TextField
-          type="date"
-          label="Certified At"
-          InputLabelProps={{ shrink: true }}
-          value={certifiedAt}
-          onChange={(e) => setCertifiedAt(e.target.value)}
-          size="small"
-          fullWidth
-        />
-
-        <AppButton
-          variant="contained"
-          onClick={addRentManager}
-          disabled={!canAdd || !name || !certifiedAt}
-          sx={{
-            width: isMobile ? "100%" : "auto",
-            whiteSpace: "nowrap",
-          }}
-        >
-          Add
-        </AppButton>
-      </Stack>
 
       {/* Status */}
       <Box sx={{ mt: 2 }}>

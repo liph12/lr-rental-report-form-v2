@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Paper,
   Box,
@@ -7,7 +7,6 @@ import {
   Stack,
   TextField,
   IconButton,
-  MenuItem,
   CircularProgress,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -15,8 +14,17 @@ import { useAppContext } from "../../providers/AppProvider";
 import AppButton from "../utils/AppButton";
 import { AttachFile } from "@mui/icons-material";
 import useUploadFiles from "../hooks/useUploadFiles";
+import { type ParticipatedActivity as ParticipatedActivityType } from "../../providers/AppProvider";
 
 const MONTHS = ["January", "February", "March"];
+const ACTIVITIES_PER_MONTH = 3; // default slots; user can add up to 5
+
+// Default date per month — user can still change it via the date picker
+const MONTH_DEFAULT_DATE: Record<string, string> = {
+  January: "2026-01-01",
+  February: "2026-02-01",
+  March: "2026-03-01",
+};
 
 type MonthlyUploading = {
   month: string;
@@ -28,116 +36,134 @@ export default function ParticipatedActivity({ errors }: { errors: string[] }) {
 
   const data = reportForm.participated_activities;
 
-  const [month, setMonth] = useState("January");
-  const [date, setDate] = useState("");
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
   const [monthlyUploadings, setMonthlyUploadings] = useState<
     MonthlyUploading[]
   >([]);
 
   // ─────────────────────────────────────────────
-  // ADD ACTIVITY
+  // INIT: pre-fill 3 blank slots per month
   // ─────────────────────────────────────────────
-  const addActivity = () => {
-    if (!title || !description || !date) return;
+  useEffect(() => {
+    const activities: ParticipatedActivityType[] = [];
+
+    MONTHS.forEach((m) => {
+      for (let i = 0; i < ACTIVITIES_PER_MONTH; i++) {
+        activities.push({
+          month: m,
+          date: MONTH_DEFAULT_DATE[m] ?? "",
+          title: "",
+          description: "",
+          documents: [],
+        });
+      }
+    });
 
     setReportForm((prev) => ({
       ...prev,
-      participated_activities: [
-        ...prev.participated_activities,
-        {
-          month,
-          date,
-          title,
-          description,
-          documents: [],
-        },
-      ],
+      participated_activities: [...activities],
+    }));
+
+    setMonthlyUploadings(
+      activities.map((a) => ({ month: a.month, progress: false })),
+    );
+  }, []);
+
+  // ─────────────────────────────────────────────
+  // UPDATE FIELD — updates a single activity's field in-place
+  // ─────────────────────────────────────────────
+  const updateField = (
+    globalIndex: number,
+    field: keyof Pick<
+      ParticipatedActivityType,
+      "date" | "title" | "description"
+    >,
+    value: string,
+  ) => {
+    setReportForm((prev) => {
+      const updated = [...prev.participated_activities];
+      updated[globalIndex] = { ...updated[globalIndex], [field]: value };
+      return { ...prev, participated_activities: updated };
+    });
+  };
+
+  // ─────────────────────────────────────────────
+  // ADD ACTIVITY SLOT (up to 5 per month)
+  // ─────────────────────────────────────────────
+  const addActivitySlot = (month: string) => {
+    const currentCount = data.filter((a) => a.month === month).length;
+    if (currentCount >= 5) return; // max 5 per month
+
+    const newActivity: ParticipatedActivityType = {
+      month,
+      date: MONTH_DEFAULT_DATE[month] ?? "",
+      title: "",
+      description: "",
+      documents: [],
+    };
+
+    setReportForm((prev) => ({
+      ...prev,
+      participated_activities: [...prev.participated_activities, newActivity],
     }));
     setMonthlyUploadings((prev) => [...prev, { month, progress: false }]);
-
-    setTitle("");
-    setDescription("");
-    setDate("");
   };
 
   // ─────────────────────────────────────────────
   // REMOVE ACTIVITY
   // ─────────────────────────────────────────────
-  const removeActivity = (index: number) => {
+  const removeActivity = (globalIndex: number) => {
     setReportForm((prev) => ({
       ...prev,
       participated_activities: prev.participated_activities.filter(
-        (_, i) => i !== index,
+        (_, i) => i !== globalIndex,
       ),
     }));
+    setMonthlyUploadings((prev) => prev.filter((_, i) => i !== globalIndex));
   };
 
   // ─────────────────────────────────────────────
-  // ADD DOCUMENTS
+  // UPLOAD DOCUMENTS
   // ─────────────────────────────────────────────
-
-  const makeUploadProgress = (
-    activityIndex: number,
-    progress: boolean = true,
-  ) => {
+  const makeUploadProgress = (globalIndex: number, progress = true) => {
     setMonthlyUploadings((prev) => {
       const updated = [...prev];
-
-      updated[activityIndex] = {
-        ...updated[activityIndex],
-        progress: progress,
-      };
-
+      updated[globalIndex] = { ...updated[globalIndex], progress };
       return updated;
     });
   };
 
   const uploadDocs = async (
     e: React.ChangeEvent<HTMLInputElement>,
-    activityIndex: number,
+    globalIndex: number,
   ) => {
-    makeUploadProgress(activityIndex);
-
+    makeUploadProgress(globalIndex, true);
     const files = Array.from(e.target.files || []);
     const urls = await useUploadFiles(files);
-
-    makeUploadProgress(activityIndex, false);
+    makeUploadProgress(globalIndex, false);
 
     setReportForm((prev) => {
       const updated = [...prev.participated_activities];
-
-      updated[activityIndex] = {
-        ...updated[activityIndex],
-        documents: [...updated[activityIndex].documents, ...urls],
+      updated[globalIndex] = {
+        ...updated[globalIndex],
+        documents: [...updated[globalIndex].documents, ...urls],
       };
-
-      return {
-        ...prev,
-        participated_activities: updated,
-      };
+      return { ...prev, participated_activities: updated };
     });
   };
 
   // ─────────────────────────────────────────────
   // REMOVE SINGLE DOCUMENT
   // ─────────────────────────────────────────────
-  const removeDocument = (activityIndex: number, docIndex: number) => {
+  const removeDocument = (globalIndex: number, docIndex: number) => {
     setReportForm((prev) => {
       const updated = [...prev.participated_activities];
-
-      updated[activityIndex] = {
-        ...updated[activityIndex],
-        documents: updated[activityIndex].documents.filter(
+      updated[globalIndex] = {
+        ...updated[globalIndex],
+        documents: updated[globalIndex].documents.filter(
           (_, i) => i !== docIndex,
         ),
       };
-
-      return {
-        ...prev,
-        participated_activities: updated,
-      };
+      return { ...prev, participated_activities: updated };
     });
   };
 
@@ -163,141 +189,160 @@ export default function ParticipatedActivity({ errors }: { errors: string[] }) {
 
       <Typography sx={{ mt: 1, fontSize: { xs: 13, sm: 14 } }}>
         Minimum 3 activities per month required (Jan–Mar reporting period).
+        Maximum 5 per month.
       </Typography>
       <Typography sx={{ fontSize: { xs: 12, sm: 13 } }} color="textSecondary">
         Note: Upload any proof of participation (e.g., clear photos,
         certificates or other relevant documents).
       </Typography>
 
-      {/* FORM */}
-      <Stack direction={isMobile ? "column" : "row"} spacing={2} sx={{ mt: 2 }}>
-        {/* MONTH SELECT */}
-        <TextField
-          select
-          label="Month"
-          value={month}
-          onChange={(e) => setMonth(e.target.value)}
-          size="small"
-          fullWidth
-        >
-          {MONTHS.map((m) => (
-            <MenuItem key={m} value={m}>
-              {m}
-            </MenuItem>
-          ))}
-        </TextField>
-
-        <TextField
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          size="small"
-          fullWidth
-        />
-
-        <TextField
-          label="Title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          size="small"
-          fullWidth
-        />
-
-        <TextField
-          label="Description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          size="small"
-          fullWidth
-        />
-
-        <AppButton onClick={addActivity} variant="contained">
-          Add
-        </AppButton>
-      </Stack>
-
-      {/* GROUPED VIEW */}
+      {/* GROUPED VIEW — one section per month */}
       <Stack spacing={4} sx={{ mt: 4 }}>
         {MONTHS.map((m) => {
-          const items = data.filter((a) => a.month === m);
+          // All activities for this month, with their global index preserved
+          const monthItems = data
+            .map((a, globalIndex) => ({ activity: a, globalIndex }))
+            .filter(({ activity }) => activity.month === m);
+
+          const canAddMore = monthItems.length < 5;
 
           return (
             <Box key={m}>
               {/* MONTH HEADER */}
-              <Typography fontWeight={700} sx={{ mb: 1 }}>
-                {m}
-              </Typography>
-
-              {items.length === 0 && (
+              <Stack
+                direction="row"
+                justifyContent="space-between"
+                alignItems="center"
+                sx={{ mb: 1 }}
+              >
+                <Typography fontWeight={700}>{m}</Typography>
                 <Typography variant="caption" color="text.secondary">
-                  No activities yet
+                  {monthItems.length} / 5 activities
                 </Typography>
-              )}
+              </Stack>
 
               <Stack spacing={2}>
-                {items.map((act) => {
-                  const activityIndex = data.findIndex(
-                    (x) =>
-                      x.month === act.month &&
-                      x.title === act.title &&
-                      x.date === act.date,
-                  );
-
-                  return (
-                    <Paper
-                      key={activityIndex}
-                      variant="outlined"
-                      sx={{ p: 2, borderRadius: 2 }}
+                {monthItems.map(({ activity: act, globalIndex }, slotIndex) => (
+                  <Paper
+                    key={globalIndex}
+                    variant="outlined"
+                    sx={{ p: 2, borderRadius: 2 }}
+                  >
+                    {/* SLOT LABEL */}
+                    <Typography
+                      variant="caption"
+                      fontWeight={600}
+                      color="text.secondary"
+                      sx={{ mb: 1, display: "block" }}
                     >
-                      {/* HEADER */}
-                      <Stack
-                        direction="row"
-                        justifyContent="space-between"
-                        alignItems="center"
-                      >
-                        <Box>
-                          <Typography fontWeight={600}>{act.title}</Typography>
-                          <Typography variant="caption">{act.date}</Typography>
-                        </Box>
+                      Activity #{slotIndex + 1}
+                    </Typography>
 
+                    {/* FIELDS ROW */}
+                    <Stack
+                      direction={isMobile ? "column" : "row"}
+                      spacing={2}
+                      alignItems={isMobile ? "stretch" : "flex-start"}
+                    >
+                      {/* DATE */}
+                      <TextField
+                        type="date"
+                        label="Date"
+                        InputLabelProps={{ shrink: true }}
+                        value={act.date}
+                        onChange={(e) =>
+                          updateField(globalIndex, "date", e.target.value)
+                        }
+                        size="small"
+                        sx={{ minWidth: 150 }}
+                      />
+
+                      {/* TITLE */}
+                      <TextField
+                        label="Title"
+                        value={act.title}
+                        onChange={(e) =>
+                          updateField(globalIndex, "title", e.target.value)
+                        }
+                        size="small"
+                        fullWidth
+                      />
+
+                      {/* DESCRIPTION */}
+                      <TextField
+                        label="Description"
+                        value={act.description}
+                        onChange={(e) =>
+                          updateField(
+                            globalIndex,
+                            "description",
+                            e.target.value,
+                          )
+                        }
+                        size="small"
+                        fullWidth
+                        multiline
+                        minRows={1}
+                      />
+
+                      {/* DELETE SLOT — only allow if more than minimum (3) */}
+                      {monthItems.length > ACTIVITIES_PER_MONTH && (
                         <IconButton
                           color="error"
-                          onClick={() => removeActivity(activityIndex)}
+                          onClick={() => removeActivity(globalIndex)}
+                          sx={{ alignSelf: "center", flexShrink: 0 }}
                         >
                           <DeleteIcon fontSize="small" />
                         </IconButton>
-                      </Stack>
+                      )}
+                    </Stack>
 
-                      {/* DESCRIPTION */}
-                      <Typography variant="body2" sx={{ mt: 1 }}>
-                        {act.description}
-                      </Typography>
+                    {/* UPLOAD DOCUMENTS */}
+                    <AppButton
+                      component="label"
+                      size="small"
+                      sx={{ mt: 1.5 }}
+                      startIcon={<AttachFile />}
+                    >
+                      Upload Documents
+                      <input
+                        hidden
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={(e) => uploadDocs(e, globalIndex)}
+                      />
+                    </AppButton>
 
-                      {/* UPLOAD */}
-                      <AppButton
-                        component="label"
-                        size="small"
-                        sx={{ mt: 1 }}
-                        startIcon={<AttachFile />}
+                    {/* UPLOADING INDICATOR */}
+                    {monthlyUploadings[globalIndex]?.progress && (
+                      <Box
+                        sx={{
+                          display: "flex",
+                          gap: 1,
+                          alignItems: "center",
+                          mt: 1,
+                        }}
                       >
-                        Upload Documents
-                        <input
-                          hidden
-                          type="file"
-                          multiple
-                          accept="image/*"
-                          onChange={(e) => uploadDocs(e, activityIndex)}
-                        />
-                      </AppButton>
+                        <CircularProgress size={18} />
+                        <Typography variant="body2" color="warning.main">
+                          Uploading documents…
+                        </Typography>
+                      </Box>
+                    )}
 
-                      {/* DOCUMENTS PREVIEW */}
+                    {/* DOCUMENT PREVIEWS */}
+                    {act.documents.length > 0 && (
                       <Stack
                         direction="row"
                         spacing={1}
-                        sx={{ mt: 1, flexWrap: "wrap" }}
+                        sx={{ mt: 1.5, flexWrap: "wrap", gap: 1 }}
                       >
                         {act.documents.map((doc, docIndex) => (
-                          <Box key={docIndex} sx={{ position: "relative" }}>
+                          <Box
+                            key={docIndex}
+                            sx={{ position: "relative", flexShrink: 0 }}
+                          >
                             <Box
                               component="img"
                               src={doc}
@@ -307,46 +352,52 @@ export default function ParticipatedActivity({ errors }: { errors: string[] }) {
                                 borderRadius: 1,
                                 objectFit: "cover",
                                 border: "1px solid #ddd",
+                                display: "block",
                               }}
                             />
-
-                            {/* REMOVE DOCUMENT */}
                             <IconButton
                               size="small"
                               color="error"
                               onClick={() =>
-                                removeDocument(activityIndex, docIndex)
+                                removeDocument(globalIndex, docIndex)
                               }
                               sx={{
                                 position: "absolute",
                                 top: -8,
                                 right: -8,
+                                bgcolor: "background.paper",
                                 border: "1px solid #ddd",
+                                p: "2px",
+                                "&:hover": { bgcolor: "error.50" },
                               }}
                             >
-                              <DeleteIcon fontSize="small" />
+                              <DeleteIcon sx={{ fontSize: 14 }} />
                             </IconButton>
                           </Box>
                         ))}
                       </Stack>
-                      {monthlyUploadings[activityIndex].progress && (
-                        <Box
-                          sx={{ display: "flex", gap: 2, alignItems: "center" }}
-                        >
-                          <CircularProgress size={20} />
-                          <Typography variant="body2" color="warning">
-                            Uploading documents...
-                          </Typography>
-                        </Box>
-                      )}
-                    </Paper>
-                  );
-                })}
+                    )}
+                  </Paper>
+                ))}
               </Stack>
+
+              {/* ADD SLOT BUTTON */}
+              {canAddMore && (
+                <AppButton
+                  size="small"
+                  variant="outlined"
+                  sx={{ mt: 1.5 }}
+                  onClick={() => addActivitySlot(m)}
+                >
+                  + Add Activity for {m}
+                </AppButton>
+              )}
             </Box>
           );
         })}
       </Stack>
+
+      {/* VALIDATION ERRORS */}
       {hasErrors && (
         <Box sx={{ mt: 1 }}>
           {errors.map((err, k) => (
