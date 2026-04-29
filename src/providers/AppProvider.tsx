@@ -18,6 +18,7 @@ interface UserData {
 }
 
 interface RentManager {
+  id: number;
   name: string;
   certifiedAt: string;
   type: "Rent Manager" | "Rent Manager PRO";
@@ -49,7 +50,7 @@ export interface SocialMediaPresence {
   documents: string[];
 }
 
-interface ReportForm {
+export interface ReportForm {
   rent_managers: RentManager[];
   office_secretary: officeSecretary;
   participated_activities: ParticipatedActivity[];
